@@ -1,11 +1,12 @@
 import pytest
 import os
 
-from src.seed import Staff, Base, Department
+from src.seed import Staff, Base, Department, pg8000engine
 from unittest.mock import patch
 import sqlalchemy
-from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, DateTime, func
+from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.exc import SQLAlchemyError
 import datetime
 
 class TestConnection:
@@ -16,11 +17,8 @@ class TestConnection:
     @patch("sqlalchemy.create_engine")
     @patch("os.remove")
     @patch("os.path.exists")
-
-    #test method that checks your database setup logic
     def test_db_is_initialised(self, mock_exists, mock_remove, mock_create_engine):
 
-        
         mock_exists.return_value = True # forcing to return true - file exists
         
         if os.path.exists("my_db.db"):
@@ -34,6 +32,16 @@ class TestConnection:
         mock_create_engine.assert_called_once_with("postgresql+pg8000://postgre:password@localhost/mydatabase",
             echo=True #check if the engine is created
         )
+
+    @patch("sqlalchemy.create_engine")
+    @patch("os.remove")
+    @patch("os.path.exists")
+    def test_error_engine_not_created(self, mock_exists, mock_remove, mock_create_engine):
+        mock_exists.return_value = False
+        mock_create_engine.side_effect = SQLAlchemyError("Mocked connection error")
+
+        with pytest.raises(SQLAlchemyError, match="Mocked connection error"):
+            pg8000engine()
 
 class TestStaff:
     # Create fixture for connection 
@@ -63,7 +71,8 @@ class TestStaff:
         session.add(staff)
         session.commit()
 
-        # Retrieve it back
+        # session query SELECT and returns first row
+        #https://docs.sqlalchemy.org/en/20/orm/queryguide/query.html#sqlalchemy.orm.Query.first 
         saved = session.query(Staff).first()
 
         # Checking if data has been entered correctly
@@ -72,6 +81,14 @@ class TestStaff:
         assert saved.department_id == 1
         assert saved.email_address == "camillabertini@fakemail.com"
 
+        # checking right data type
+        assert isinstance(saved.first_name, str)
+        assert isinstance(saved.last_name, str)
+        assert isinstance(saved.department_id, int)
+        assert isinstance(saved.email_address, str)
+
         # checking timestamps are created
         assert isinstance(saved.created_at, datetime.datetime)
         assert isinstance(saved.last_updated, datetime.datetime)
+
+

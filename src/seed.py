@@ -1,19 +1,18 @@
+from utils import init_engine
 from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey, Numeric, Boolean, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from sqlalchemy.sql import func
+from sqlalchemy.exc import SQLAlchemyError
 from faker import Faker
 import os 
 
 # Define a PostgreSQL connection string
 
-if os.path.exists("my_db.db"):
-    os.remove("my_db.db")
 
-# username = "postgre"
-# password = "password"
-# hostname = "localhost" 
-# name db = "mydatabase"
-pg8000engine = create_engine("postgresql+pg8000://postgres:password@localhost/mydatabase", echo=True)
+if os.path.exists("my_db.db"):
+        os.remove("my_db.db")
+
+pg8000engine = init_engine() # see utils
 
 # declarative models 
 # SQLAlchemy generates the appropriate SQL
@@ -72,8 +71,12 @@ class Staff(Base):
 
 # metadata holds information about all the ORM-mapped tables declared 
 #https://docs.sqlalchemy.org/en/13/core/metadata.html#sqlalchemy.schema.MetaData
-Base.metadata.drop_all(pg8000engine)  #drop all the know tables to Base.metadata
-Base.metadata.create_all(pg8000engine) # create all the know tables to Base.metadata
+try:
+    Base.metadata.drop_all(pg8000engine)  #drop all the know tables to Base.metadata
+    Base.metadata.create_all(pg8000engine) # create all the know tables to Base.metadata
+except SQLAlchemyError as e:
+    print("Failed to drop and create tables:", e)
+    raise
 
 # SET UP FAKER
 
