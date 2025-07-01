@@ -2,6 +2,7 @@ import pytest
 import os
 
 from src.seed import Staff, Base, Department, pg8000engine
+from src.utils import init_engine 
 from unittest.mock import patch
 import sqlalchemy
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, DateTime, func
@@ -14,7 +15,7 @@ class TestConnection:
     #https://docs.python.org/3/library/unittest.mock.html 
     #https://realpython.com/python-mock-library/
     # order matters!
-    @patch("sqlalchemy.create_engine")
+    @patch("src.utils.sqlalchemy_create_engine")
     @patch("os.remove")
     @patch("os.path.exists")
     def test_db_is_initialised(self, mock_exists, mock_remove, mock_create_engine):
@@ -25,7 +26,8 @@ class TestConnection:
             os.remove("my_db.db") # no actual file is deleted
 
         # engine is created
-        sqlalchemy.create_engine("postgresql+pg8000://postgre:password@localhost/mydatabase", echo=True)
+        #sqlalchemy.create_engine("postgresql+pg8000://postgre:password@localhost/mydatabase", echo=True)
+        init_engine("postgresql+pg8000://postgre:password@localhost/mydatabase", echo=True)
 
         mock_exists.assert_called_once_with("my_db.db") #check for the file’s existence.
         mock_remove.assert_called_once_with("my_db.db") #check if the file is removed
@@ -33,7 +35,7 @@ class TestConnection:
             echo=True #check if the engine is created
         )
 
-    @patch("sqlalchemy.create_engine")
+    @patch("src.utils.sqlalchemy_create_engine")
     @patch("os.remove")
     @patch("os.path.exists")
     def test_error_engine_not_created(self, mock_exists, mock_remove, mock_create_engine):
@@ -41,7 +43,7 @@ class TestConnection:
         mock_create_engine.side_effect = SQLAlchemyError("Mocked connection error")
 
         with pytest.raises(SQLAlchemyError, match="Mocked connection error"):
-            pg8000engine()
+            init_engine("postgresql+pg8000://postgre:password@localhost/mydatabase", echo=True)
 
 class TestStaff:
     # Create fixture for connection 

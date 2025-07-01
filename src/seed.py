@@ -1,4 +1,4 @@
-from utils import init_engine
+from src.utils import init_engine
 from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey, Numeric, Boolean, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from sqlalchemy.sql import func
