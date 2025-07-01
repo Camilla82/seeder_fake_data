@@ -93,4 +93,3 @@ class TestStaff:
         assert isinstance(saved.created_at, datetime.datetime)
         assert isinstance(saved.last_updated, datetime.datetime)
 
-
