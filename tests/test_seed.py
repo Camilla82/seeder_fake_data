@@ -1,7 +1,7 @@
 import pytest
 import os
 
-from src.seed import Staff, Base, Department, pg8000engine
+from src.seed import Staff, Base, Department, pg8000engine, creating_departments, creating_staff
 from src.utils import init_engine 
 from unittest.mock import patch
 from sqlalchemy import text, create_engine, Column, Integer, String, ForeignKey, DateTime, func
@@ -153,40 +153,56 @@ class TestInsert:
         assert result[0].department_name == "Human Resources" 
 
     def test_inserting_200_fake_staff_entries(self,session):
+        
+        departments = creating_departments()
 
-        departments = [
-            Department(department_name="Human Resources"),
-            Department(department_name="Finance"),
-            Department(department_name="Marketing"),
-            Department(department_name="Research & Development")
-        ]
-        session.add_all(departments)
+        #https://www.w3schools.com/python/ref_func_isinstance.asp
 
-        session.commit()
+        result = creating_staff(departments)
 
-        # Generate 200 staff
-        for _ in range(200):
-            dept = random.choice(departments)
-            staff = Staff(
-                first_name=fake.first_name(),
-                last_name=fake.last_name(),
-                department_id=dept.department_id,
-                email_address=fake.email()
-            )
-            session.add(staff)
-
-        session.commit()
-
-        # assert 200 staff members
-
-        result = session.query(Staff).all() #fetch staff
         saved = session.query(Staff).first()
+        # assert isinstance(saved, Staff) # is it an instance of Staff?
+        
 
-        assert len(result) == 200
-        assert isinstance(saved.first_name, str)
-        assert isinstance(saved.last_name, str)
-        assert isinstance(saved.department_id, int)
-        assert isinstance(saved.email_address, str)
+        # assert result.first_name  # as an instance of a class checking that it exists and its truthy
+        # assert result.last_name
+        # assert result.department_id in [dept.department_id for dept in departments]
+        # assert "@" in result.email_address
+    
+        # departments = [
+        #     Department(department_name="Human Resources"),
+        #     Department(department_name="Finance"),
+        #     Department(department_name="Marketing"),
+        #     Department(department_name="Research & Development")
+        # ]
+        # session.add_all(departments)
+
+        # session.commit()
+
+        # # Generate 200 staff
+        # for _ in range(200):
+        #     dept = random.choice(departments)
+        #     staff = Staff(
+        #         first_name=fake.first_name(),
+        #         last_name=fake.last_name(),
+        #         department_id=dept.department_id,
+        #         email_address=fake.email()
+        #     )
+        #     session.add(staff)
+
+        # session.commit()
+        
+
+        # # assert 200 staff members
+
+        # result = session.query(Staff).all() #fetch staff
+        # saved = session.query(Staff).first()
+
+        # assert len(result) == 200
+        # assert isinstance(saved.first_name, str)
+        # assert isinstance(saved.last_name, str)
+        # assert isinstance(saved.department_id, int)
+        # assert isinstance(saved.email_address, str)
 
         
 

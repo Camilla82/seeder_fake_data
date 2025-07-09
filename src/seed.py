@@ -94,38 +94,41 @@ fake = Faker()
 
 # add x departments names
 
-departments = [
-    Department(department_id=1, department_name="Human Resources"),
-    Department(department_id=2, department_name="Finance"),
-    Department(department_id=3,department_name="Marketing"),
-    Department(department_id=4,department_name="Research & Development")
-]
+def creating_departments(): 
+    departments = [
+        Department(department_id=1, department_name="Human Resources"),
+        Department(department_id=2, department_name="Finance"),
+        Department(department_id=3,department_name="Marketing"),
+        Department(department_id=4,department_name="Research & Development")
+    ]
 
-session.add_all(departments)
-session.commit()
+    session.add_all(departments)
+    session.commit()
+    return departments
 
 #https://faker.readthedocs.io/
 #add staff 
 ## loop? for each entry add this
 #https://docs.sqlalchemy.org/en/14/orm/query.html
+
 departments = session.query(Department).all() # fetchin all the rows
+def creating_staff(departments):
+     
+    for _ in range(200):
+        # random department https://docs.python.org/3/library/random.html
+        # create staff member 
+        dept = random.choice(departments)
+        staff = Staff(
+            first_name=fake.first_name(),
+            last_name=fake.last_name(),
+            department_id=dept.department_id,
+            email_address=fake.email(),
+        )
+        session.add(staff)
+    session.commit()
+    return staff 
 
-for _ in range(200):
-    # random department https://docs.python.org/3/library/random.html
-    # create staff member 
-    dept = random.choice(departments)
-    staff = Staff(
-         first_name=fake.first_name(),
-         last_name=fake.last_name(),
-         department_id=dept.department_id,
-         email_address=fake.email(),
-    )
 
-    session.add(staff)
-
-session.commit()
 
 # CLOSE SESSION
-
-
 session.close()
