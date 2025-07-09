@@ -180,6 +180,13 @@ class TestInsert:
         # assert 200 staff members
 
         result = session.query(Staff).all() #fetch staff
+        saved = session.query(Staff).first()
 
         assert len(result) == 200
+        assert isinstance(saved.first_name, str)
+        assert isinstance(saved.last_name, str)
+        assert isinstance(saved.department_id, int)
+        assert isinstance(saved.email_address, str)
+
+        
 

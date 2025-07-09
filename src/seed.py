@@ -88,6 +88,7 @@ except SQLAlchemyError as e:
 Session = sessionmaker(pg8000engine)
 session = Session()
 
+# FAKE DATA
 fake = Faker()
 
 
