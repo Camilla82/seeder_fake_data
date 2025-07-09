@@ -5,6 +5,7 @@ from sqlalchemy.sql import func
 from sqlalchemy.exc import SQLAlchemyError
 from faker import Faker
 import os 
+import random 
 
 # Define a PostgreSQL connection string
 
@@ -52,6 +53,7 @@ class Department(Base):
 
 #https://stackoverflow.com/questions/13370317/sqlalchemy-default-datetime
 #https://docs.sqlalchemy.org/en/20/orm/declarative_tables.html 
+#https://docs.sqlalchemy.org/en/20/orm/declarative_tables.html#declarative-table-with-mapped-column
 class Staff(Base):
     __tablename__ = 'staff'
     staff_id = Column(Integer, primary_key=True)
@@ -78,13 +80,52 @@ except SQLAlchemyError as e:
     print("Failed to drop and create tables:", e)
     raise
 
-# SET UP FAKER
+# SET UP SESSION
+#https://docs.sqlalchemy.org/en/20/orm/session_basics.html
+#https://docs.sqlalchemy.org/en/20/orm/quickstart.html#create-objects-and-persist
+#https://www.youtube.com/watch?v=529LYDgRTgQ&t=2287s&ab_channel=NeuralNine
 
+Session = sessionmaker(pg8000engine)
+session = Session()
+
+# FAKE DATA
 fake = Faker()
 
-# INSERT DATA FOR EACH TABLE WITH FAKER
 
+# add x departments names
 
+departments = [
+    Department(department_id=1, department_name="Human Resources"),
+    Department(department_id=2, department_name="Finance"),
+    Department(department_id=3,department_name="Marketing"),
+    Department(department_id=4,department_name="Research & Development")
+]
+
+session.add_all(departments)
+session.commit()
+
+#https://faker.readthedocs.io/
+#add staff 
+## loop? for each entry add this
+#https://docs.sqlalchemy.org/en/14/orm/query.html
+departments = session.query(Department).all() # fetchin all the rows
+
+for _ in range(200):
+    # random department https://docs.python.org/3/library/random.html
+    # create staff member 
+    dept = random.choice(departments)
+    staff = Staff(
+         first_name=fake.first_name(),
+         last_name=fake.last_name(),
+         department_id=dept.department_id,
+         email_address=fake.email(),
+    )
+
+    session.add(staff)
+
+session.commit()
 
 # CLOSE SESSION
 
+
+session.close()
