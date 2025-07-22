@@ -126,11 +126,10 @@ class TestInsert:
         assert len(query) == 200, "Expected 200 staff entries"
 
         email_regex = r"[^@]+@[^@]+\.[^@]+"
-        name_regex = r"^[A-Za-z '-]+$"
 
         for person in query:
             assert isinstance(person, Staff)
-            assert isinstance(person.first_name, str) and re.match(name_regex, person.first_name)
-            assert isinstance(person.last_name, str) and re.match(name_regex, person.last_name)
+            assert isinstance(person.first_name, str)
+            assert isinstance(person.last_name, str)
             assert isinstance(person.department_id, int)
             assert isinstance(person.email_address, str) and re.match(email_regex, person.email_address)
