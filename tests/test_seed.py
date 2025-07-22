@@ -1,17 +1,48 @@
-import pytest
-import os
 
-from src.seed import Staff, Base, Department, pg8000engine, creating_departments, creating_staff
-from src.utils import init_engine 
+import pytest 
+import os
+import re
+import datetime
 from unittest.mock import patch
+from src.seed import Staff, Base, Department, creating_departments, creating_staff
+from src.utils import init_engine
 from sqlalchemy import text, create_engine, Column, Integer, String, ForeignKey, DateTime, func
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 from faker import Faker
-import datetime
-import random
 
-fake = Faker() 
+fake = Faker()
+
+@pytest.fixture
+def session():
+    # Create SQLite database
+    # engine = create_engine("sqlite:///:memory:")
+    # session  https://docs.sqlalchemy.org/en/13/orm/session_api.html#sqlalchemy.orm.session.sessionmaker
+    engine = create_engine("postgresql+pg8000://postgres:password@localhost/mydatabase")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+        
+    session.query(Staff).delete()
+    session.commit()
+    session.query(Department).delete()
+    session.commit()
+
+    # Reset the department_id sequence to 1
+    session.execute(text("ALTER SEQUENCE department_department_id_seq RESTART WITH 1"))
+    session.execute(text("ALTER SEQUENCE staff_staff_id_seq RESTART WITH 1"))
+    session.commit()
+
+    yield session
+    session.close()
+
+@pytest.fixture
+def departments():
+    return creating_departments()
+
+@pytest.fixture
+def staff(session, departments):
+    return creating_staff(departments)
 
 class TestConnection:
     #replace the real functions with mock objects 
@@ -49,36 +80,10 @@ class TestConnection:
             init_engine("postgresql+pg8000://postgre:password@localhost/mydatabase", echo=True)
 
 class TestStaff:
-    # Create fixture for connection 
-    @pytest.fixture
-    def session(self):
-        # Create SQLite database
-        # engine = create_engine("sqlite:///:memory:")
-        # session  https://docs.sqlalchemy.org/en/13/orm/session_api.html#sqlalchemy.orm.session.sessionmaker
-        engine = create_engine("postgresql+pg8000://postgres:password@localhost/mydatabase")
-        Base.metadata.create_all(engine)
-        Session = sessionmaker(bind=engine)
-        session = Session()
-        
-        session.query(Staff).delete() #Foreign Key Constraint Violation - careful
-        session.commit()
-        session.query(Department).delete()
-        session.commit()
-        
-        # Reset the department_id sequence to 1
-        session.execute(text("ALTER SEQUENCE department_department_id_seq RESTART WITH 1"))
-        session.commit()
-
-        yield session
-        session.close()
-
     def test_create_staff(self, session):
+        department = Department(department_id=1, department_name="Engineering")
+        session.add(department)
 
-        # Create department from Department class
-        department = Department(department_id=1, department_name="Engineering") 
-        session.add(department) 
-
-        # Create and add a staff instance
         staff = Staff(
             first_name="Camilla",
             last_name="Bertini",
@@ -86,57 +91,19 @@ class TestStaff:
             email_address="camillabertini@fakemail.com"
         )
         session.add(staff)
-
         session.commit()
 
-        # session query SELECT and returns first row
-        #https://docs.sqlalchemy.org/en/20/orm/queryguide/query.html#sqlalchemy.orm.Query.first 
         saved = session.query(Staff).first()
 
-        # Checking if data has been entered correctly
         assert saved.first_name == "Camilla"
         assert saved.last_name == "Bertini"
         assert saved.department_id == 1
         assert saved.email_address == "camillabertini@fakemail.com"
-
-        # checking right data type
-        assert isinstance(saved.first_name, str)
-        assert isinstance(saved.last_name, str)
-        assert isinstance(saved.department_id, int)
-        assert isinstance(saved.email_address, str)
-
-        # checking timestamps are created
         assert isinstance(saved.created_at, datetime.datetime)
         assert isinstance(saved.last_updated, datetime.datetime)
 
 class TestInsert:
-    @pytest.fixture
-    def session(self):
-        # Create SQLite database
-        # engine = create_engine("sqlite:///:memory:")
-        # session  https://docs.sqlalchemy.org/en/13/orm/session_api.html#sqlalchemy.orm.session.sessionmaker
-        engine = create_engine("postgresql+pg8000://postgres:password@localhost/mydatabase")
-        Base.metadata.create_all(engine)
-        Session = sessionmaker(bind=engine)
-        session = Session()
-        
-        session.query(Staff).delete()
-        session.commit()
-        session.query(Department).delete()
-        session.commit()
-
-        # Reset the department_id sequence to 1
-        session.execute(text("ALTER SEQUENCE department_department_id_seq RESTART WITH 1"))
-        session.execute(text("ALTER SEQUENCE staff_staff_id_seq RESTART WITH 1"))
-        session.commit()
-
-        yield session
-        session.close()
-    
     def test_if_departments_have_been_inserted_correctly(self, session):
-
-        # Create department from Department class
-        #department = Department(department_id=1, department_name="Engineering") 
         departments = [
             Department(department_name="Human Resources"),
             Department(department_name="Finance"),
@@ -144,65 +111,26 @@ class TestInsert:
             Department(department_name="Research & Development")
         ]
         session.add_all(departments)
-
         session.commit()
 
         result = session.query(Department).all()
 
         assert len(result) == 4
-        assert result[0].department_name == "Human Resources" 
+        assert result[0].department_name == "Human Resources"
+        assert result[1].department_name == "Finance"
+        assert result[2].department_name == "Marketing"
+        assert result[3].department_name == "Research & Development"
 
-    def test_inserting_200_fake_staff_entries(self,session):
-        
-        departments = creating_departments()
+    def test_inserting_200_fake_staff_entries(self, session, staff):
+        query = session.query(Staff).all()
+        assert len(query) == 200, "Expected 200 staff entries"
 
-        #https://www.w3schools.com/python/ref_func_isinstance.asp
+        email_regex = r"[^@]+@[^@]+\.[^@]+"
+        name_regex = r"^[A-Za-z '-]+$"
 
-        result = creating_staff(departments)
-
-        saved = session.query(Staff).first()
-        # assert isinstance(saved, Staff) # is it an instance of Staff?
-        
-
-        # assert result.first_name  # as an instance of a class checking that it exists and its truthy
-        # assert result.last_name
-        # assert result.department_id in [dept.department_id for dept in departments]
-        # assert "@" in result.email_address
-    
-        # departments = [
-        #     Department(department_name="Human Resources"),
-        #     Department(department_name="Finance"),
-        #     Department(department_name="Marketing"),
-        #     Department(department_name="Research & Development")
-        # ]
-        # session.add_all(departments)
-
-        # session.commit()
-
-        # # Generate 200 staff
-        # for _ in range(200):
-        #     dept = random.choice(departments)
-        #     staff = Staff(
-        #         first_name=fake.first_name(),
-        #         last_name=fake.last_name(),
-        #         department_id=dept.department_id,
-        #         email_address=fake.email()
-        #     )
-        #     session.add(staff)
-
-        # session.commit()
-        
-
-        # # assert 200 staff members
-
-        # result = session.query(Staff).all() #fetch staff
-        # saved = session.query(Staff).first()
-
-        # assert len(result) == 200
-        # assert isinstance(saved.first_name, str)
-        # assert isinstance(saved.last_name, str)
-        # assert isinstance(saved.department_id, int)
-        # assert isinstance(saved.email_address, str)
-
-        
-
+        for person in query:
+            assert isinstance(person, Staff)
+            assert isinstance(person.first_name, str) and re.match(name_regex, person.first_name)
+            assert isinstance(person.last_name, str) and re.match(name_regex, person.last_name)
+            assert isinstance(person.department_id, int)
+            assert isinstance(person.email_address, str) and re.match(email_regex, person.email_address)
